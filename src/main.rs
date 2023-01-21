@@ -119,7 +119,7 @@ fn ball_movement(
     transform.translation.y += time.delta_seconds() * velocity.0.y;
 }
 
-fn ball_collision(
+fn ball_bounds_collision(
     ball_transform: Query<&Transform, With<Ball>>,
     mut ball_velocity: Query<&mut Velocity, With<Ball>>,
 ) {
@@ -135,6 +135,51 @@ fn ball_collision(
     if transform.translation.y.abs() > y_bounds {
         velocity.0.y *= -1.0;
     }
+}
+
+fn ball_blocks_collision(
+    ball_transform: Query<&Transform, With<Ball>>,
+    mut ball_velocity: Query<&mut Velocity, With<Ball>>,
+    block_transforms: Query<&Transform, With<Block>>,
+) {
+    let Some(transform) = ball_transform.iter().next() else { return; };
+    let Some(mut velocity) = ball_velocity.iter_mut().next() else { return; };
+
+    for block_transform in block_transforms.iter() {
+        if aabb(transform, block_transform) {
+            let x_diff = (transform.translation.x - block_transform.translation.x).abs() / 15.0;
+            let y_diff = (transform.translation.y - block_transform.translation.y).abs() / 10.0;
+            if x_diff > y_diff {
+                velocity.0.x *= -1.0;
+                return;
+            } else {
+                velocity.0.y *= -1.0;
+                return;
+            }
+        }
+    }
+}
+
+fn ball_player_collision(
+    ball_transform: Query<&Transform, With<Ball>>,
+    mut ball_velocity: Query<&mut Velocity, With<Ball>>,
+    player_transform: Query<&Transform, With<Player>>,
+) {
+    let Some(transform) = ball_transform.iter().next() else { return; };
+    let Some(mut velocity) = ball_velocity.iter_mut().next() else { return; };
+    let Some(player) = player_transform.iter().next() else { return; };
+
+    if aabb(transform, player) {
+        velocity.0.y *= -1.0;
+    }
+}
+
+fn aabb(a: &Transform, b: &Transform) -> bool {
+    let collision_x = a.translation.x + a.scale.x / 2.0 >= b.translation.x - b.scale.x / 2.0
+        && b.translation.x + b.scale.x / 2.0 >= a.translation.x - a.scale.x / 2.0;
+    let collision_y = a.translation.y + a.scale.y / 2.0 >= b.translation.y - b.scale.y / 2.0
+        && b.translation.y + b.scale.y / 2.0 >= a.translation.y - a.scale.y / 2.0;
+    return collision_x && collision_y;
 }
 
 fn main() {
@@ -156,6 +201,8 @@ fn main() {
         .add_system(bevy::window::close_on_esc)
         .add_system(player_movement)
         .add_system(ball_movement)
-        .add_system(ball_collision.after(ball_movement))
+        .add_system(ball_bounds_collision.after(ball_movement))
+        .add_system(ball_player_collision.after(ball_bounds_collision))
+        .add_system(ball_blocks_collision.after(ball_player_collision))
         .run();
 }
