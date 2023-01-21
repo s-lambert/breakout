@@ -6,6 +6,8 @@ const WINDOW_WIDTH: f32 = 380.0;
 const PADDLE_SPEED: f32 = 190.0;
 const PADDLE_WIDTH: f32 = 38.0;
 
+const BLOCK_WIDTH: f32 = 20.0;
+
 #[derive(Component)]
 struct Velocity(Vec2);
 
@@ -14,6 +16,9 @@ struct Player;
 
 #[derive(Component)]
 struct Ball;
+
+#[derive(Component)]
+struct Block;
 
 fn setup_camera(mut commands: Commands) {
     commands.spawn(Camera2dBundle::default());
@@ -53,6 +58,37 @@ fn setup_ball(mut commands: Commands) {
         },
         Velocity(Vec2::new(PADDLE_SPEED, PADDLE_SPEED)),
     ));
+}
+
+fn setup_blocks(mut commands: Commands) {
+    let gap = 1.0;
+    let rows = ((WINDOW_HEIGHT / 4.0 / 10.0) - gap * 2.0) as i32;
+    let columns = ((WINDOW_WIDTH / BLOCK_WIDTH) - gap * 2.0) as i32;
+    for row in 0..rows {
+        for column in 0..columns {
+            commands.spawn((
+                Block,
+                SpriteBundle {
+                    sprite: Sprite {
+                        color: Color::rgb(0.0, 1.0, 0.0),
+                        ..default()
+                    },
+                    transform: Transform {
+                        scale: Vec3::new(18.0, 8.0, 10.0),
+                        translation: Vec3::new(
+                            (WINDOW_WIDTH / 2.0)
+                                - ((column as f32 + gap) * BLOCK_WIDTH)
+                                - (BLOCK_WIDTH / 2.0),
+                            (WINDOW_HEIGHT / 2.0) - 5.0 - ((row as f32 + gap) * 10.0),
+                            1.0,
+                        ),
+                        ..default()
+                    },
+                    ..default()
+                },
+            ));
+        }
+    }
 }
 
 fn player_movement(
@@ -116,6 +152,7 @@ fn main() {
         .add_startup_system(setup_camera)
         .add_startup_system(setup_player)
         .add_startup_system(setup_ball)
+        .add_startup_system(setup_blocks)
         .add_system(bevy::window::close_on_esc)
         .add_system(player_movement)
         .add_system(ball_movement)
