@@ -138,15 +138,18 @@ fn ball_bounds_collision(
 }
 
 fn ball_blocks_collision(
+    mut commands: Commands,
     ball_transform: Query<&Transform, With<Ball>>,
     mut ball_velocity: Query<&mut Velocity, With<Ball>>,
-    block_transforms: Query<&Transform, With<Block>>,
+    block_transforms: Query<(Entity, &Transform), With<Block>>,
 ) {
     let Some(transform) = ball_transform.iter().next() else { return; };
     let Some(mut velocity) = ball_velocity.iter_mut().next() else { return; };
 
-    for block_transform in block_transforms.iter() {
+    for (block, block_transform) in block_transforms.iter() {
         if aabb(transform, block_transform) {
+            commands.entity(block).despawn();
+
             let x_diff = (transform.translation.x - block_transform.translation.x).abs() / 15.0;
             let y_diff = (transform.translation.y - block_transform.translation.y).abs() / 10.0;
             if x_diff > y_diff {
