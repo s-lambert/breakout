@@ -68,8 +68,8 @@ fn start_game(interaction_query: Query<&Interaction>, mut state: ResMut<State<Ga
 }
 
 fn cleanup_menu(mut commands: Commands, node_query: Query<(Entity, &Node)>) {
-    for (ent, _) in node_query.iter() {
-        commands.entity(ent).despawn();
+    for (id, _) in node_query.iter() {
+        commands.entity(id).despawn();
     }
 }
 
@@ -170,77 +170,77 @@ fn setup_blocks(mut commands: Commands) {
 fn player_movement(
     time: Res<Time>,
     keyboard_input: Res<Input<KeyCode>>,
-    mut player_transform: Query<&mut Transform, With<Player>>,
+    mut player_transform_query: Query<&mut Transform, With<Player>>,
 ) {
-    let Some(mut transform) = player_transform.iter_mut().next() else { return; };
+    let Some(mut player_transform) = player_transform_query.iter_mut().next() else { return; };
     let is_left_pressed = keyboard_input.pressed(KeyCode::Left);
     let is_right_pressed = keyboard_input.pressed(KeyCode::Right);
     if is_left_pressed && !is_right_pressed {
-        transform.translation.x -= time.delta_seconds() * PADDLE_SPEED;
+        player_transform.translation.x -= time.delta_seconds() * PADDLE_SPEED;
     } else if is_right_pressed && !is_left_pressed {
-        transform.translation.x += time.delta_seconds() * PADDLE_SPEED;
+        player_transform.translation.x += time.delta_seconds() * PADDLE_SPEED;
     }
     let bounds = WINDOW_WIDTH / 2.0 - PADDLE_WIDTH / 2.0;
-    transform.translation.x = transform.translation.x.clamp(-bounds, bounds);
+    player_transform.translation.x = player_transform.translation.x.clamp(-bounds, bounds);
 }
 
 fn ball_movement(
     time: Res<Time>,
-    mut ball_transform: Query<&mut Transform, With<Ball>>,
-    ball_velocity: Query<&Velocity, With<Ball>>,
+    mut ball_transform_query: Query<&mut Transform, With<Ball>>,
+    ball_velocity_query: Query<&Velocity, With<Ball>>,
 ) {
-    let Some(mut transform) = ball_transform.iter_mut().next() else { return; };
-    let Some(velocity) = ball_velocity.iter().next() else { return; };
-    transform.translation.x += time.delta_seconds() * velocity.0.x;
-    transform.translation.y += time.delta_seconds() * velocity.0.y;
+    let Some(mut ball_transform) = ball_transform_query.iter_mut().next() else { return; };
+    let Some(ball_velocity) = ball_velocity_query.iter().next() else { return; };
+    ball_transform.translation.x += time.delta_seconds() * ball_velocity.0.x;
+    ball_transform.translation.y += time.delta_seconds() * ball_velocity.0.y;
 }
 
 fn ball_bounds_collision(
-    ball_transform: Query<&Transform, With<Ball>>,
-    mut ball_velocity: Query<&mut Velocity, With<Ball>>,
+    ball_transform_query: Query<&Transform, With<Ball>>,
+    mut ball_velocity_query: Query<&mut Velocity, With<Ball>>,
 ) {
-    let Some(transform) = ball_transform.iter().next() else { return; };
-    let Some(mut velocity) = ball_velocity.iter_mut().next() else { return; };
+    let Some(ball_transform) = ball_transform_query.iter().next() else { return; };
+    let Some(mut ball_velocity) = ball_velocity_query.iter_mut().next() else { return; };
 
     let x_bounds = WINDOW_WIDTH / 2.0 - 5.0;
     let y_bounds = WINDOW_HEIGHT / 2.0 - 5.0;
 
-    if transform.translation.x.abs() > x_bounds {
-        velocity.0.x *= -1.0;
+    if ball_transform.translation.x.abs() > x_bounds {
+        ball_velocity.0.x *= -1.0;
     }
-    if transform.translation.y.abs() > y_bounds {
-        velocity.0.y *= -1.0;
+    if ball_transform.translation.y.abs() > y_bounds {
+        ball_velocity.0.y *= -1.0;
     }
 }
 
 fn ball_blocks_collision(
     mut commands: Commands,
-    ball_transform: Query<&Transform, With<Ball>>,
-    mut ball_velocity: Query<&mut Velocity, With<Ball>>,
-    block_transforms: Query<(Entity, &Transform), With<Block>>,
+    ball_transform_query: Query<&Transform, With<Ball>>,
+    mut ball_velocity_query: Query<&mut Velocity, With<Ball>>,
+    block_transforms_query: Query<(Entity, &Transform), With<Block>>,
     mut scoreboard: ResMut<Scoreboard>,
 ) {
-    let Some(transform) = ball_transform.iter().next() else { return; };
-    let Some(mut velocity) = ball_velocity.iter_mut().next() else { return; };
+    let Some(ball_transform) = ball_transform_query.iter().next() else { return; };
+    let Some(mut ball_velocity) = ball_velocity_query.iter_mut().next() else { return; };
 
-    let ball_size = transform.scale.truncate();
-    for (block, block_transform) in block_transforms.iter() {
+    let ball_size = ball_transform.scale.truncate();
+    for (block_id, block_transform) in block_transforms_query.iter() {
         if let Some(collision) = collide(
-            transform.translation,
+            ball_transform.translation,
             ball_size,
             block_transform.translation,
             block_transform.scale.truncate(),
         ) {
             scoreboard.score += 1;
-            commands.entity(block).despawn();
+            commands.entity(block_id).despawn();
 
             match collision {
                 Collision::Bottom | Collision::Top => {
-                    velocity.0.y *= -1.0;
+                    ball_velocity.0.y *= -1.0;
                     return;
                 }
                 Collision::Left | Collision::Right => {
-                    velocity.0.x *= -1.0;
+                    ball_velocity.0.x *= -1.0;
                     return;
                 }
                 _ => {}
@@ -250,30 +250,30 @@ fn ball_blocks_collision(
 }
 
 fn ball_player_collision(
-    ball_transform: Query<&Transform, With<Ball>>,
-    mut ball_velocity: Query<&mut Velocity, With<Ball>>,
-    player_transform: Query<&Transform, With<Player>>,
+    ball_transform_query: Query<&Transform, With<Ball>>,
+    mut ball_velocity_query: Query<&mut Velocity, With<Ball>>,
+    player_transform_query: Query<&Transform, With<Player>>,
 ) {
-    let Some(transform) = ball_transform.iter().next() else { return; };
-    let Some(mut velocity) = ball_velocity.iter_mut().next() else { return; };
-    let Some(player) = player_transform.iter().next() else { return; };
+    let Some(ball_transform) = ball_transform_query.iter().next() else { return; };
+    let Some(mut ball_velocity) = ball_velocity_query.iter_mut().next() else { return; };
+    let Some(player_transform) = player_transform_query.iter().next() else { return; };
 
-    if velocity.0.y < 0.0 {
+    if ball_velocity.0.y < 0.0 {
         if collide(
-            transform.translation,
-            transform.scale.truncate(),
-            player.translation,
-            player.scale.truncate(),
+            ball_transform.translation,
+            ball_transform.scale.truncate(),
+            player_transform.translation,
+            player_transform.scale.truncate(),
         )
         .is_some()
         {
-            velocity.0.y *= -1.0;
+            ball_velocity.0.y *= -1.0;
         }
     }
 }
 
-fn update_scoreboard(scoreboard: Res<Scoreboard>, mut query: Query<&mut Text>) {
-    let mut text = query.single_mut();
+fn update_scoreboard(scoreboard: Res<Scoreboard>, mut text_query: Query<&mut Text>) {
+    let mut text = text_query.single_mut();
     text.sections[1].value = scoreboard.score.to_string();
 }
 
