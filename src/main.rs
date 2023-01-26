@@ -67,8 +67,8 @@ fn start_game(interaction_query: Query<&Interaction>, mut state: ResMut<State<Ga
     }
 }
 
-fn cleanup_menu(mut commands: Commands, node_query: Query<(Entity, &Node)>) {
-    for (id, _) in node_query.iter() {
+fn cleanup_menu(mut commands: Commands, node_query: Query<Entity, With<Node>>) {
+    for id in node_query.iter() {
         commands.entity(id).despawn();
     }
 }
