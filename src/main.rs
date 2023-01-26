@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, sprite::collide_aabb::*};
 
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
 enum GameState {
@@ -223,20 +223,28 @@ fn ball_blocks_collision(
     let Some(transform) = ball_transform.iter().next() else { return; };
     let Some(mut velocity) = ball_velocity.iter_mut().next() else { return; };
 
+    let ball_size = transform.scale.truncate();
     for (block, block_transform) in block_transforms.iter() {
-        if aabb(transform, block_transform) {
+        if let Some(collision) = collide(
+            transform.translation,
+            ball_size,
+            block_transform.translation,
+            block_transform.scale.truncate(),
+        ) {
             scoreboard.score += 1;
             commands.entity(block).despawn();
 
-            let x_diff = (transform.translation.x - block_transform.translation.x).abs() / 15.0;
-            let y_diff = (transform.translation.y - block_transform.translation.y).abs() / 10.0;
-            if x_diff > y_diff {
-                velocity.0.x *= -1.0;
-                return;
-            } else {
-                velocity.0.y *= -1.0;
-                return;
-            }
+            match collision {
+                Collision::Bottom | Collision::Top => {
+                    velocity.0.y *= -1.0;
+                    return;
+                }
+                Collision::Left | Collision::Right => {
+                    velocity.0.x *= -1.0;
+                    return;
+                }
+                _ => {}
+            };
         }
     }
 }
@@ -250,17 +258,18 @@ fn ball_player_collision(
     let Some(mut velocity) = ball_velocity.iter_mut().next() else { return; };
     let Some(player) = player_transform.iter().next() else { return; };
 
-    if aabb(transform, player) {
-        velocity.0.y *= -1.0;
+    if velocity.0.y < 0.0 {
+        if collide(
+            transform.translation,
+            transform.scale.truncate(),
+            player.translation,
+            player.scale.truncate(),
+        )
+        .is_some()
+        {
+            velocity.0.y *= -1.0;
+        }
     }
-}
-
-fn aabb(a: &Transform, b: &Transform) -> bool {
-    let collision_x = a.translation.x + a.scale.x / 2.0 >= b.translation.x - b.scale.x / 2.0
-        && b.translation.x + b.scale.x / 2.0 >= a.translation.x - a.scale.x / 2.0;
-    let collision_y = a.translation.y + a.scale.y / 2.0 >= b.translation.y - b.scale.y / 2.0
-        && b.translation.y + b.scale.y / 2.0 >= a.translation.y - a.scale.y / 2.0;
-    return collision_x && collision_y;
 }
 
 fn update_scoreboard(scoreboard: Res<Scoreboard>, mut query: Query<&mut Text>) {
