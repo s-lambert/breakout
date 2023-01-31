@@ -173,11 +173,10 @@ fn player_movement(
     mut player_transform_query: Query<&mut Transform, With<Player>>,
 ) {
     let Some(mut player_transform) = player_transform_query.iter_mut().next() else { return; };
-    let is_left_pressed = keyboard_input.pressed(KeyCode::Left);
-    let is_right_pressed = keyboard_input.pressed(KeyCode::Right);
-    if is_left_pressed && !is_right_pressed {
+    if keyboard_input.pressed(KeyCode::Left) {
         player_transform.translation.x -= time.delta_seconds() * PADDLE_SPEED;
-    } else if is_right_pressed && !is_left_pressed {
+    } 
+    if keyboard_input.pressed(KeyCode::Right) {
         player_transform.translation.x += time.delta_seconds() * PADDLE_SPEED;
     }
     let bounds = WINDOW_WIDTH / 2.0 - PADDLE_WIDTH / 2.0;
